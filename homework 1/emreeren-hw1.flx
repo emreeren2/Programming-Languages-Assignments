@@ -1,0 +1,117 @@
+%{
+int lineCounter = 1;	
+%}
+
+%x string
+%%
+\n		lineCounter++;
+
+"\""		{
+		  BEGIN(string);
+ 	          printf("%d tSTRING (", lineCounter);
+		}
+<string>"\""   	{
+		  printf(")\n");
+		  BEGIN(INITIAL);
+		}
+<string>. 	printf("%s", yytext);
+
+
+"Mail"	       	  printf("%d tMAIL\n", lineCounter);
+"end Mail"        printf("%d tENDMAIL\n", lineCounter);
+"schedule"   	  printf("%d tSCHEDULE\n", lineCounter);
+"end schedule"    printf("%d tENDSCH\n", lineCounter);
+"send"		  printf("%d tSEND\n", lineCounter);
+"to"    	   printf("%d tTO\n", lineCounter);		
+"from"		  printf("%d tFROM\n", lineCounter);
+"set"    	  printf("%d tSET\n", lineCounter);
+
+[a-zA-Z_][a-zA-Z0-9_]*		printf("%d tIDENT (%s)\n", lineCounter,yytext);
+[a-zA-Z0-9._-]+"@"[a-zA-Z0-9._-]*	{
+				int length = yyleng;
+				int fault = 0;								
+
+				int at_symbol_pos = 0;
+				int i = 0;
+				for(; i < length; i++){
+				  if(yytext[i] == '@'){
+				    at_symbol_pos = i;
+				    break;
+				  }
+				}
+
+				if(at_symbol_pos + 1 == length){
+				  fault = 1;
+				  REJECT;
+				}
+	
+				if(yytext[0] == '.' || yytext[at_symbol_pos - 1] == '.'){
+				  fault = 1;  
+				  REJECT;
+				}						
+				
+				int j = 0;
+				for(; j < at_symbol_pos; j++){
+				  if(yytext[j] == '.' && yytext[j + 1] == '.'){
+				    fault = 1;
+				    REJECT;
+				  }
+				}
+
+				int domain_dot_1 = 0;
+				int domain_dot_2 = 0;
+				int domain_dot_3 = 0;
+				int k = at_symbol_pos + 1;
+				for(; k < length; k++){
+				  if(yytext[k] == '.'){
+				    if(domain_dot_1 == 0){
+				      domain_dot_1 = k;
+				    }
+				    else if(domain_dot_2 == 0){
+				      domain_dot_2 = k;
+			    }
+				    else{
+				      domain_dot_3 = k;
+				    }
+				  }
+				}
+
+				if(domain_dot_3 != 0){
+				  fault = 1;
+				  REJECT;
+				}					
+				
+				if(yytext[at_symbol_pos + 1] == '-' || yytext[domain_dot_1 - 1] == '-' || yytext[domain_dot_1 + 1] == '-' || yytext[domain_dot_2 - 1] == '-' || yytext[domain_dot_2 + 1] == '-'){
+				   fault = 1;
+				   REJECT;  
+				}
+
+                                if(yytext[length-1] == '.'){
+                                  fault = 1; 
+				  REJECT;
+                                }
+				if(fault == 0){
+				  printf("%d tADDRESS (%s)\n", lineCounter, yytext);
+				}		
+				else{
+				  REJECT;
+				}	
+				}
+[0-9]+":"[0-9]+      		printf("%d tTIME (%s)\n", lineCounter, yytext);
+[0-9]+"/"[0-9]+"/"[0-9]+        printf("%d tDATE (%s)\n", lineCounter, yytext);
+
+","	printf("%d tCOMMA\n", lineCounter);
+":"     printf("%d tCOLON\n", lineCounter);
+"("     printf("%d tLPR\n", lineCounter);
+")"     printf("%d tRPR\n", lineCounter);
+"["     printf("%d tLBR\n", lineCounter);
+"]"     printf("%d tRBR\n", lineCounter);
+"@"     printf("%d tAT\n", lineCounter);
+[^ ]       printf("%d ILLEGAL CHARACTER (%s)\n", lineCounter, yytext);
+" "	;
+%%
+
+int main()
+{
+  yylex();
+}
